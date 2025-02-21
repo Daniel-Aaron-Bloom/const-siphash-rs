@@ -1,37 +1,37 @@
-SipHash implementation for Rust
-===============================
+[![Current Crates.io Version](https://img.shields.io/crates/v/const-siphasher.svg)](https://crates.io/crates/const-siphasher)
+[![docs-rs](https://docs.rs/const-siphasher/badge.svg)](https://docs.rs/const-siphasher)
 
-This crates implements SipHash-2-4 and SipHash-1-3 in Rust.
+# Const SipHash implementation for Rust
 
-It is based on the original implementation from rust-core and exposes the
-same API.
+This crates implements compile-time SipHash-2-4 and SipHash-1-3 in Rust.
+
+It is based on the based on the excellent [`siphasher`](https://crates.io/crates/siphasher) crate, which itself is based on the original implementation from rust-core.
 
 It also implements SipHash variants returning 128-bit tags.
 
 The `sip` module implements the standard 64-bit mode, whereas the `sip128`
 module implements the 128-bit mode.
 
-Usage
------
+## Usage
 
 In `Cargo.toml`:
 
 ```toml
 [dependencies]
-siphasher = "1"
+const-siphasher = "1"
 ```
 
 If you want [serde](https://github.com/serde-rs/serde) support, include the feature like this:
 
 ```toml
 [dependencies]
-siphasher = { version = "1", features = ["serde"] }
+const-siphasher = { version = "1", features = ["serde"] }
 ```
 
 64-bit mode:
 
 ```rust
-use siphasher::sip::{SipHasher, SipHasher13, SipHasher24};
+use const_siphasher::sip::{SipHasher, SipHasher13, SipHasher24};
 
 // one-shot:
 
@@ -56,7 +56,7 @@ let h = hasher.finish();
 128-bit mode:
 
 ```rust
-use siphasher::sip128::{Hasher128, SipHasher, SipHasher13, SipHasher24};
+use const_siphasher::sip128::{Hasher128, SipHasher, SipHasher13, SipHasher24};
 
 // one-shot:
 
@@ -78,11 +78,9 @@ hasher.write(array2);
 let h = hasher.finish128().as_bytes();
 ```
 
-[API documentation](https://docs.rs/siphasher/)
------------------------------------------------
+## [API documentation](https://docs.rs/const-siphasher/)
 
-Note
-----
+## Note
 
 Due to a confusing and not well documented API, methods from the `Hasher` trait of the standard library (`std::hash::Hasher`, `core::hash::Hasher`) produce non-portable results.
 

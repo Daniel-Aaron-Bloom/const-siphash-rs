@@ -1,11 +1,11 @@
 [package]
-authors = ["Frank Denis <github@pureftpd.org>"]
-keywords = ["crypto","hash","siphash"]
+authors = ["Daniel Bloom"]
+keywords = ["crypto","hash","siphash","const"]
 license = "MIT/Apache-2.0"
-name = "siphasher"
+name = "const-siphasher"
 description = "SipHash-2-4, SipHash-1-3 and 128-bit variants in pure Rust"
-repository = "https://github.com/jedisct1/rust-siphash"
-homepage = "https://docs.rs/siphasher"
+repository = "https://github.com/Daniel-Aaron-Bloom/const-siphash-rs"
+homepage = "https://docs.rs/const-siphasher"
 documentation = "https://docs.rs/siphasher"
 readme = "README.md"
 version = "1.0.1"
