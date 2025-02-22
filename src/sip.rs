@@ -19,6 +19,8 @@ use core::ptr;
 
 use array_concat::{concat_arrays, split_array};
 
+use crate::{Sip, Sip13Rounds, Sip24Rounds};
+
 /// An implementation of SipHash 1-3.
 ///
 /// See: <https://www.aumasson.jp/siphash/siphash.pdf>
@@ -337,7 +339,7 @@ impl<S: Sip> Hasher<S> {
 
         // `self.tail` is full, process it.
         self.state.v3 ^= self.tail;
-        S::c_rounds(&mut self.state);
+        self.state = c_rounds::<S>(self.state);
         self.state.v0 ^= self.tail;
 
         self.ntail = size - needed;
@@ -492,7 +494,7 @@ impl<S: Sip> hash::Hasher for Hasher<S> {
                 return;
             } else {
                 self.state.v3 ^= self.tail;
-                S::c_rounds(&mut self.state);
+                self.state = c_rounds::<S>(self.state);
                 self.state.v0 ^= self.tail;
                 self.ntail = 0;
             }
@@ -507,7 +509,7 @@ impl<S: Sip> hash::Hasher for Hasher<S> {
             let mi = unsafe { load_int_le!(msg, i, u64) };
 
             self.state.v3 ^= mi;
-            S::c_rounds(&mut self.state);
+            self.state = c_rounds::<S>(self.state);
             self.state.v0 ^= mi;
 
             i += 8;
@@ -524,11 +526,11 @@ impl<S: Sip> hash::Hasher for Hasher<S> {
         let b: u64 = ((self.length as u64 & 0xff) << 56) | self.tail;
 
         state.v3 ^= b;
-        S::c_rounds(&mut state);
+        state = c_rounds::<S>(state);
         state.v0 ^= b;
 
         state.v2 ^= 0xff;
-        S::d_rounds(&mut state);
+        state = d_rounds::<S>(state);
 
         state.v0 ^ state.v1 ^ state.v2 ^ state.v3
     }
@@ -542,44 +544,20 @@ impl<S: Sip> Default for Hasher<S> {
     }
 }
 
-#[doc(hidden)]
-trait Sip {
-    fn c_rounds(_: &mut State);
-    fn d_rounds(_: &mut State);
+const fn c_rounds<S: Sip>(mut state: State) -> State {
+    let mut i = 0;
+    while i < S::C_ROUNDS {
+        compress!(state);
+        i += 1;
+    }
+    state
 }
 
-#[derive(Debug, Clone, Copy, Default)]
-struct Sip13Rounds;
-
-impl Sip for Sip13Rounds {
-    #[inline]
-    fn c_rounds(state: &mut State) {
+const fn d_rounds<S: Sip>(mut state: State) -> State {
+    let mut i = 0;
+    while i < S::D_ROUNDS {
         compress!(state);
+        i += 1;
     }
-
-    #[inline]
-    fn d_rounds(state: &mut State) {
-        compress!(state);
-        compress!(state);
-        compress!(state);
-    }
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-struct Sip24Rounds;
-
-impl Sip for Sip24Rounds {
-    #[inline]
-    fn c_rounds(state: &mut State) {
-        compress!(state);
-        compress!(state);
-    }
-
-    #[inline]
-    fn d_rounds(state: &mut State) {
-        compress!(state);
-        compress!(state);
-        compress!(state);
-        compress!(state);
-    }
+    state
 }
