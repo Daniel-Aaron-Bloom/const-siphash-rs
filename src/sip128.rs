@@ -16,7 +16,9 @@ use core::hash::Hasher as _;
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr;
-use core::u64;
+
+use array_concat::concat_arrays;
+use array_concat::split_array;
 
 /// A 128-bit (2x64) hash output
 #[derive(Debug, Clone, Copy, Default)]
@@ -178,11 +180,8 @@ impl SipHasher {
     }
 
     /// Creates a `SipHasher` from a 16 byte key.
-    pub fn new_with_key(key: &[u8; 16]) -> SipHasher {
-        let mut b0 = [0u8; 8];
-        let mut b1 = [0u8; 8];
-        b0.copy_from_slice(&key[0..8]);
-        b1.copy_from_slice(&key[8..16]);
+    pub const fn new_with_key(key: &[u8; 16]) -> SipHasher {
+        let (b0, b1) = split_array!(*key, 8, 8);
         let key0 = u64::from_le_bytes(b0);
         let key1 = u64::from_le_bytes(b1);
         Self::new_with_keys(key0, key1)
@@ -194,11 +193,11 @@ impl SipHasher {
     }
 
     /// Get the key used by this hasher as a 16 byte vector
-    pub fn key(&self) -> [u8; 16] {
-        let mut bytes = [0u8; 16];
-        bytes[0..8].copy_from_slice(&self.0.hasher.k0.to_le_bytes());
-        bytes[8..16].copy_from_slice(&self.0.hasher.k1.to_le_bytes());
-        bytes
+    pub const fn key(&self) -> [u8; 16] {
+        concat_arrays!(
+            self.0.hasher.k0.to_le_bytes(),
+            self.0.hasher.k1.to_le_bytes()
+        )
     }
 
     /// Hash a byte array - This is the easiest and safest way to use SipHash.
@@ -234,11 +233,8 @@ impl SipHasher13 {
     }
 
     /// Creates a `SipHasher13` from a 16 byte key.
-    pub fn new_with_key(key: &[u8; 16]) -> SipHasher13 {
-        let mut b0 = [0u8; 8];
-        let mut b1 = [0u8; 8];
-        b0.copy_from_slice(&key[0..8]);
-        b1.copy_from_slice(&key[8..16]);
+    pub const fn new_with_key(key: &[u8; 16]) -> SipHasher13 {
+        let (b0, b1) = split_array!(*key, 8, 8);
         let key0 = u64::from_le_bytes(b0);
         let key1 = u64::from_le_bytes(b1);
         Self::new_with_keys(key0, key1)
@@ -250,11 +246,8 @@ impl SipHasher13 {
     }
 
     /// Get the key used by this hasher as a 16 byte vector
-    pub fn key(&self) -> [u8; 16] {
-        let mut bytes = [0u8; 16];
-        bytes[0..8].copy_from_slice(&self.hasher.k0.to_le_bytes());
-        bytes[8..16].copy_from_slice(&self.hasher.k1.to_le_bytes());
-        bytes
+    pub const fn key(&self) -> [u8; 16] {
+        concat_arrays!(self.hasher.k0.to_le_bytes(), self.hasher.k1.to_le_bytes())
     }
 
     /// Hash a byte array - This is the easiest and safest way to use SipHash.
@@ -290,11 +283,8 @@ impl SipHasher24 {
     }
 
     /// Creates a `SipHasher24` from a 16 byte key.
-    pub fn new_with_key(key: &[u8; 16]) -> SipHasher24 {
-        let mut b0 = [0u8; 8];
-        let mut b1 = [0u8; 8];
-        b0.copy_from_slice(&key[0..8]);
-        b1.copy_from_slice(&key[8..16]);
+    pub const fn new_with_key(key: &[u8; 16]) -> SipHasher24 {
+        let (b0, b1) = split_array!(*key, 8, 8);
         let key0 = u64::from_le_bytes(b0);
         let key1 = u64::from_le_bytes(b1);
         Self::new_with_keys(key0, key1)
@@ -306,11 +296,8 @@ impl SipHasher24 {
     }
 
     /// Get the key used by this hasher as a 16 byte vector
-    pub fn key(&self) -> [u8; 16] {
-        let mut bytes = [0u8; 16];
-        bytes[0..8].copy_from_slice(&self.hasher.k0.to_le_bytes());
-        bytes[8..16].copy_from_slice(&self.hasher.k1.to_le_bytes());
-        bytes
+    pub const fn key(&self) -> [u8; 16] {
+        concat_arrays!(self.hasher.k0.to_le_bytes(), self.hasher.k1.to_le_bytes())
     }
 
     /// Hash a byte array - This is the easiest and safest way to use SipHash.
