@@ -8,7 +8,7 @@ repository = "https://github.com/Daniel-Aaron-Bloom/const-siphash-rs"
 homepage = "https://docs.rs/const-siphasher"
 documentation = "https://docs.rs/siphasher"
 readme = "README.md"
-version = "1.0.1"
+version = "1.0.2"
 categories = ["algorithms", "cryptography"]
 edition = "2018"
 

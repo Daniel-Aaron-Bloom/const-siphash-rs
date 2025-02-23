@@ -10,9 +10,7 @@
 
 //! An implementation of SipHash.
 
-use core::cmp;
 use core::hash;
-use core::hash::Hasher as _;
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr;
@@ -126,7 +124,7 @@ macro_rules! load_int_le {
 ///
 /// Unsafe because: unchecked indexing at start..start+len
 #[inline]
-unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
+const unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
     debug_assert!(len < 8);
     let mut i = 0; // current byte index (from LSB) in the output u64
     let mut out = 0;
@@ -139,10 +137,10 @@ unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
         i += 2
     }
     if i < len {
-        out |= (*buf.get_unchecked(start + i) as u64) << (i * 8);
+        out |= (ptr::read(buf.as_ptr().add(start + i)) as u64) << (i * 8);
         i += 1;
     }
-    debug_assert_eq!(i, len);
+    debug_assert!(i == len);
     out
 }
 
@@ -160,11 +158,8 @@ impl SipHasher {
     }
 
     /// Creates a `SipHasher` from a 16 byte key.
-    pub fn new_with_key(key: &[u8; 16]) -> SipHasher {
-        let mut b0 = [0u8; 8];
-        let mut b1 = [0u8; 8];
-        b0.copy_from_slice(&key[0..8]);
-        b1.copy_from_slice(&key[8..16]);
+    pub const fn new_with_key(key: &[u8; 16]) -> SipHasher {
+        let (b0, b1) = split_array!(*key, 8, 8);
         let key0 = u64::from_le_bytes(b0);
         let key1 = u64::from_le_bytes(b1);
         Self::new_with_keys(key0, key1)
@@ -176,16 +171,16 @@ impl SipHasher {
     }
 
     /// Get the key used by this hasher as a 16 byte vector
-    pub fn key(&self) -> [u8; 16] {
-        let mut bytes = [0u8; 16];
-        bytes[0..8].copy_from_slice(&self.0.hasher.k0.to_le_bytes());
-        bytes[8..16].copy_from_slice(&self.0.hasher.k1.to_le_bytes());
-        bytes
+    pub const fn key(&self) -> [u8; 16] {
+        concat_arrays!(
+            self.0.hasher.k0.to_le_bytes(),
+            self.0.hasher.k1.to_le_bytes()
+        )
     }
 
     /// Hash a byte array - This is the easiest and safest way to use SipHash.
     #[inline]
-    pub fn hash(&self, bytes: &[u8]) -> u64 {
+    pub const fn hash(&self, bytes: &[u8]) -> u64 {
         let mut hasher = self.0.hasher;
         hasher.write(bytes);
         hasher.finish()
@@ -208,7 +203,7 @@ impl SipHasher13 {
     }
 
     /// Creates a `SipHasher13` from a 16 byte key.
-    pub fn new_with_key(key: &[u8; 16]) -> SipHasher13 {
+    pub const fn new_with_key(key: &[u8; 16]) -> SipHasher13 {
         let (b0, b1) = split_array!(*key, 8, 8);
         let key0 = u64::from_le_bytes(b0);
         let key1 = u64::from_le_bytes(b1);
@@ -227,7 +222,7 @@ impl SipHasher13 {
 
     /// Hash a byte array - This is the easiest and safest way to use SipHash.
     #[inline]
-    pub fn hash(&self, bytes: &[u8]) -> u64 {
+    pub const fn hash(&self, bytes: &[u8]) -> u64 {
         let mut hasher = self.hasher;
         hasher.write(bytes);
         hasher.finish()
@@ -269,7 +264,7 @@ impl SipHasher24 {
 
     /// Hash a byte array - This is the easiest and safest way to use SipHash.
     #[inline]
-    pub fn hash(&self, bytes: &[u8]) -> u64 {
+    pub const fn hash(&self, bytes: &[u8]) -> u64 {
         let mut hasher = self.hasher;
         hasher.write(bytes);
         hasher.finish()
@@ -321,7 +316,7 @@ impl<S: Sip> Hasher<S> {
     // 64-bits. The caller is responsible for the byte-swapping and
     // zero-extension.
     #[inline]
-    fn short_write<T>(&mut self, _x: T, x: u64) {
+    const fn short_write<T>(&mut self, _x: &T, x: u64) {
         let size = mem::size_of::<T>();
         self.length += size;
 
@@ -350,36 +345,73 @@ impl<S: Sip> Hasher<S> {
 impl hash::Hasher for SipHasher {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
-        self.0.write(msg)
+        self.write(msg)
     }
 
     #[inline]
     fn finish(&self) -> u64 {
-        self.0.finish()
+        self.finish()
     }
 
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        self.0.write_usize(i);
+        self.write_usize(i);
     }
 
     #[inline]
     fn write_u8(&mut self, i: u8) {
-        self.0.write_u8(i);
+        self.write_u8(i);
     }
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
-        self.0.write_u16(i);
+        self.write_u16(i);
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.0.write_u32(i);
+        self.write_u32(i);
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
+        self.write_u64(i);
+    }
+}
+
+impl SipHasher {
+    #[inline]
+    pub const fn write(&mut self, msg: &[u8]) {
+        self.0.write(msg)
+    }
+
+    #[inline]
+    pub const fn finish(&self) -> u64 {
+        self.0.finish()
+    }
+
+    #[inline]
+    pub const fn write_usize(&mut self, i: usize) {
+        self.0.write_usize(i);
+    }
+
+    #[inline]
+    pub const fn write_u8(&mut self, i: u8) {
+        self.0.write_u8(i);
+    }
+
+    #[inline]
+    pub const fn write_u16(&mut self, i: u16) {
+        self.0.write_u16(i);
+    }
+
+    #[inline]
+    pub const fn write_u32(&mut self, i: u32) {
+        self.0.write_u32(i);
+    }
+
+    #[inline]
+    pub const fn write_u64(&mut self, i: u64) {
         self.0.write_u64(i);
     }
 }
@@ -387,36 +419,73 @@ impl hash::Hasher for SipHasher {
 impl hash::Hasher for SipHasher13 {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
-        self.hasher.write(msg)
+        self.write(msg)
     }
 
     #[inline]
     fn finish(&self) -> u64 {
-        self.hasher.finish()
+        self.finish()
     }
 
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        self.hasher.write_usize(i);
+        self.write_usize(i);
     }
 
     #[inline]
     fn write_u8(&mut self, i: u8) {
-        self.hasher.write_u8(i);
+        self.write_u8(i);
     }
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
-        self.hasher.write_u16(i);
+        self.write_u16(i);
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.hasher.write_u32(i);
+        self.write_u32(i);
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
+        self.write_u64(i);
+    }
+}
+
+impl SipHasher13 {
+    #[inline]
+    pub const fn write(&mut self, msg: &[u8]) {
+        self.hasher.write(msg)
+    }
+
+    #[inline]
+    pub const fn finish(&self) -> u64 {
+        self.hasher.finish()
+    }
+
+    #[inline]
+    pub const fn write_usize(&mut self, i: usize) {
+        self.hasher.write_usize(i);
+    }
+
+    #[inline]
+    pub const fn write_u8(&mut self, i: u8) {
+        self.hasher.write_u8(i);
+    }
+
+    #[inline]
+    pub const fn write_u16(&mut self, i: u16) {
+        self.hasher.write_u16(i);
+    }
+
+    #[inline]
+    pub const fn write_u32(&mut self, i: u32) {
+        self.hasher.write_u32(i);
+    }
+
+    #[inline]
+    pub const fn write_u64(&mut self, i: u64) {
         self.hasher.write_u64(i);
     }
 }
@@ -424,63 +493,105 @@ impl hash::Hasher for SipHasher13 {
 impl hash::Hasher for SipHasher24 {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
-        self.hasher.write(msg)
+        self.write(msg)
     }
 
     #[inline]
     fn finish(&self) -> u64 {
-        self.hasher.finish()
+        self.finish()
     }
 
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        self.hasher.write_usize(i);
+        self.write_usize(i);
     }
 
     #[inline]
     fn write_u8(&mut self, i: u8) {
-        self.hasher.write_u8(i);
+        self.write_u8(i);
     }
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
+        self.write_u16(i);
+    }
+
+    #[inline]
+    fn write_u32(&mut self, i: u32) {
+        self.write_u32(i);
+    }
+
+    #[inline]
+    fn write_u64(&mut self, i: u64) {
+        self.write_u64(i);
+    }
+}
+
+impl SipHasher24 {
+    #[inline]
+    pub const fn write(&mut self, msg: &[u8]) {
+        self.hasher.write(msg)
+    }
+
+    #[inline]
+    pub const fn finish(&self) -> u64 {
+        self.hasher.finish()
+    }
+
+    #[inline]
+    pub const fn write_usize(&mut self, i: usize) {
+        self.hasher.write_usize(i);
+    }
+
+    #[inline]
+    pub const fn write_u8(&mut self, i: u8) {
+        self.hasher.write_u8(i);
+    }
+
+    #[inline]
+    pub const fn write_u16(&mut self, i: u16) {
         self.hasher.write_u16(i);
     }
 
     #[inline]
-    fn write_u32(&mut self, i: u32) {
+    pub const fn write_u32(&mut self, i: u32) {
         self.hasher.write_u32(i);
     }
 
     #[inline]
-    fn write_u64(&mut self, i: u64) {
+    pub const fn write_u64(&mut self, i: u64) {
         self.hasher.write_u64(i);
     }
 }
 
-impl<S: Sip> hash::Hasher for Hasher<S> {
+impl<S: Sip> Hasher<S> {
     #[inline]
-    fn write_usize(&mut self, i: usize) {
-        self.short_write(i, i.to_le() as u64);
+    const fn write_usize(&mut self, i: usize) {
+        self.short_write(&i, i.to_le() as u64);
     }
 
     #[inline]
-    fn write_u8(&mut self, i: u8) {
-        self.short_write(i, i as u64);
+    const fn write_u8(&mut self, i: u8) {
+        self.short_write(&i, i as u64);
     }
 
     #[inline]
-    fn write_u32(&mut self, i: u32) {
-        self.short_write(i, i.to_le() as u64);
+    const fn write_u16(&mut self, i: u16) {
+        self.short_write(&i, i.to_le() as u64);
     }
 
     #[inline]
-    fn write_u64(&mut self, i: u64) {
-        self.short_write(i, i.to_le());
+    const fn write_u32(&mut self, i: u32) {
+        self.short_write(&i, i.to_le() as u64);
     }
 
     #[inline]
-    fn write(&mut self, msg: &[u8]) {
+    const fn write_u64(&mut self, i: u64) {
+        self.short_write(&i, i.to_le());
+    }
+
+    #[inline]
+    const fn write(&mut self, msg: &[u8]) {
         let length = msg.len();
         self.length += length;
 
@@ -488,11 +599,12 @@ impl<S: Sip> hash::Hasher for Hasher<S> {
 
         if self.ntail != 0 {
             needed = 8 - self.ntail;
-            self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << (8 * self.ntail);
             if length < needed {
+                self.tail |= unsafe { u8to64_le(msg, 0, length) } << (8 * self.ntail);
                 self.ntail += length;
                 return;
             } else {
+                self.tail |= unsafe { u8to64_le(msg, 0, needed) } << (8 * self.ntail);
                 self.state.v3 ^= self.tail;
                 self.state = c_rounds::<S>(self.state);
                 self.state.v0 ^= self.tail;
@@ -520,7 +632,7 @@ impl<S: Sip> hash::Hasher for Hasher<S> {
     }
 
     #[inline]
-    fn finish(&self) -> u64 {
+    const fn finish(&self) -> u64 {
         let mut state = self.state;
 
         let b: u64 = ((self.length as u64 & 0xff) << 56) | self.tail;
