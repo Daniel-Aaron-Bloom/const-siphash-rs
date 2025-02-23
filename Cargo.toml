@@ -8,7 +8,7 @@ repository = "https://github.com/Daniel-Aaron-Bloom/const-siphash-rs"
 homepage = "https://docs.rs/const-siphasher"
 documentation = "https://docs.rs/siphasher"
 readme = "README.md"
-version = "1.0.1"
+version = "1.0.2"
 categories = ["algorithms", "cryptography"]
 edition = "2018"
 
@@ -20,6 +20,7 @@ opt-level = 3
 [dependencies]
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
+array-concat = { git = "https://github.com/Daniel-Aaron-Bloom/array-concat" }
 
 [features]
 default = ["std"]

@@ -3,7 +3,7 @@
 
 # Const SipHash implementation for Rust
 
-This crates implements compile-time SipHash-2-4 and SipHash-1-3 in Rust.
+This crates implements compile-time (`const`) SipHash-2-4 and SipHash-1-3 in Rust.
 
 It is based on the based on the excellent [`siphasher`](https://crates.io/crates/siphasher) crate, which itself is based on the original implementation from rust-core.
 
