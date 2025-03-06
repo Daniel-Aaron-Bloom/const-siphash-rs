@@ -27,19 +27,6 @@ pub struct Hash128 {
     pub h1: u64,
     pub h2: u64,
 }
-impl Hash128 {
-    /// Converts [`u128`] to [`Hash128`]
-    pub const fn from_u128(v: u128) -> Self {
-        Hash128 {
-            h1: v as u64,
-            h2: (v >> 64) as u64,
-        }
-    }
-    /// Converts [`Hash128`] to [`u128`]
-    pub const fn into_u128(self) -> u128 {
-        (self.h1 as u128) | ((self.h2 as u128) << 64)
-    }
-}
 
 impl From<u128> for Hash128 {
     fn from(v: u128) -> Self {
@@ -817,6 +804,14 @@ const fn d_rounds<S: Sip>(mut state: State) -> State {
 }
 
 impl Hash128 {
+    /// Converts [`u128`] to [`Hash128`]
+    pub const fn from_u128(v: u128) -> Self {
+        Hash128 {
+            h1: v as u64,
+            h2: (v >> 64) as u64,
+        }
+    }
+
     /// Convert into a 16-bytes vector
     pub const fn as_bytes(&self) -> [u8; 16] {
         let mut bytes = [0u8; 16];
@@ -829,7 +824,7 @@ impl Hash128 {
         bytes
     }
 
-    /// Convert into a `u128`
+    /// Convert into a [`u128`]
     #[inline]
     pub const fn as_u128(&self) -> u128 {
         let h1 = self.h1.to_le();
